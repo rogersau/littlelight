@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, BackHandler, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { ActivityIndicator, BackHandler, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { SafeAreaProvider, SafeAreaView, initialWindowMetrics } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
@@ -115,10 +115,14 @@ function LittleLight() {
     notify(message);
   }
 
+  function startTimedNap(minutes: NapMinutes) {
+    beginTemporary(startNap(minutes, new Date()), `A ${minutes}-minute nap has started. Your saved routine resumes afterward.`);
+  }
+
   if (!settings) return (
     <SafeAreaView style={styles.loading}>
-      <StatusBar style="dark" />
-      <ActivityIndicator accessibilityLabel="Loading Little Light" color={theme.sage} />
+      <StatusBar style="light" />
+      <ActivityIndicator accessibilityLabel="Loading Little Light" color={theme.accent} />
     </SafeAreaView>
   );
 
@@ -129,37 +133,38 @@ function LittleLight() {
   const resumeSound = sound.playback && !sound.playing && !sound.loading ? sound.resume : undefined;
   const toggleSound = () => sound.toggle(settings);
   const wide = width >= 820;
-  const horizontal = clockView && width > height && width >= 560 && height < 600;
+  const horizontal = clockView && width > height && width >= 560;
   const artworkSize = clockView
-    ? Math.floor(Math.min(350, width * .72, height * (horizontal ? .55 : .40)))
-    : Math.floor(Math.min(265, width * .58));
-  const caption = preview ? 'Color preview' : current.temporary?.kind === 'nap' ? 'A little nap in progress' : current.temporary ? 'A temporary little light' : 'On schedule';
+    ? Math.floor(Math.min(400, width * (horizontal ? .41 : .88), height * (horizontal ? .62 : .44)))
+    : Math.floor(Math.min(310, width * (wide ? .34 : .57)));
+  const caption = current.temporary?.kind === 'nap' ? 'A little nap in progress' : current.temporary ? 'A temporary little light' : 'On schedule';
   const nextLabel = current.temporary ? current.temporary.kind === 'nap' ? 'Nap ends' : 'Your routine returns' : STAGE_COPY[schedule.nextStage].next;
-  const next = preview ? 'Just a preview of this little light' : `${nextLabel} at ${formatClockTime(current.nextAt)}`;
+  const next = preview ? 'Color preview · Saved routine unchanged'
+    : `${current.temporary ? '' : 'Next: '}${nextLabel} at ${formatClockTime(current.nextAt)}`;
   const countdown = settings.showCountdown && !preview
-    ? `${countdownText(now, current.nextAt)} to ${current.temporary ? 'your routine' : 'the next color'}` : null;
-  const clock = <ClockPanel stage={current.stage} now={now} palette={palette} intensity={intensity} brightness={settings.brightness}
-    artworkSize={artworkSize} horizontal={horizontal} showClock={settings.showClock} next={next} countdown={countdown} caption={caption}
-    session={clockView ? { openSettings, promptHold, wake, sound: soundStatus + soundTimer, resumeSound } : undefined}
-    preview={preview ? { next: () => setPreview(previous => previous ? nextPreview(previous) : null), dismiss: () => setPreview(null) } : undefined} />;
+    ? countdownText(now, current.nextAt) : null;
+  const clock = <ClockPanel stage={current.stage} now={now} palette={palette} brightness={settings.brightness}
+    artworkSize={artworkSize} animated={appState === 'active' && !draft} horizontal={horizontal} showClock={settings.showClock} next={next} countdown={countdown} caption={caption}
+    session={clockView ? { openSettings, promptHold, wake, sound: soundStatus + soundTimer, resumeSound, notice: draft ? null : notice } : undefined}
+    preview={!clockView ? { selected: preview, select: setPreview, next: () => setPreview(previous => previous ? nextPreview(previous) : null),
+      dismiss: () => setPreview(null) } : undefined} />;
 
   return (
-    <SafeAreaView style={[styles.screen, clockView && { backgroundColor: palette[`--${current.stage}-bg`] }]}>
-      <StatusBar style={clockView && !draft ? 'light' : 'dark'} hidden={clockView && !draft} />
-      {clockView ? <ScrollView contentContainerStyle={styles.session} bounces={false}>{clock}</ScrollView> : (
-        <Home wide={wide} clock={clock} session={session} wake={wake} start={startClock} settings={openSettings}
-          preview={preview ? undefined : () => setPreview('sleep')} schedule={schedule} quiet={settings.yellowEnabled}
-          stage={preview ? null : current.stage} palette={palette}
+    <SafeAreaView style={styles.screen} edges={clockView ? [] : undefined}>
+      <StatusBar style="light" hidden={clockView && !draft} />
+      {clockView ? clock : (
+        <Home wide={wide} clock={clock} session={session} wake={wake} start={startClock} startNap={startTimedNap} settings={openSettings}
+          schedule={schedule} quiet={settings.yellowEnabled} stage={current.temporary?.stage ?? schedule.stage} palette={palette}
           sound={{ enabled: !!sound.playback, status: soundStatus + soundTimer, toggle: toggleSound, resume: resumeSound }} />
       )}
-      {notice && !draft && <View style={styles.notice}>
+      {notice && !draft && !clockView && <View style={styles.notice}>
         <Text style={styles.noticeText} accessibilityLiveRegion="polite">{notice}</Text>
       </View>}
       {draft && <SettingsSheet draft={draft} updateDraft={update => setDraft(previous => previous ? update(previous) : null)}
         onClose={() => setDraft(null)} onSave={save} clockView={clockView} session={session}
         leaveClock={() => { setClockView(false); setDraft(null); }} endSession={endSession}
         temporary={current.temporary}
-        startNap={(minutes: NapMinutes) => beginTemporary(startNap(minutes, new Date()), `A ${minutes}-minute nap has started. Your saved routine resumes afterward.`)}
+        startNap={startTimedNap}
         startOverride={stage => beginTemporary(startOverride(stage, getScheduleState(settings, new Date())), 'Temporary color set until the next scheduled change.')}
         cancelTemporary={() => { setTemporary(null); notify('Back to your saved routine.'); }}
         soundEnabled={!!sound.playback} soundStatus={soundStatus + soundTimer} toggleSound={toggleSound} notice={notice} />}
@@ -168,9 +173,9 @@ function LittleLight() {
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: theme.paper },
-  loading: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: theme.paper },
-  session: { flexGrow: 1 },
-  notice: { alignSelf: 'center', maxWidth: 520, marginHorizontal: 16, marginBottom: 8, paddingHorizontal: 14, paddingVertical: 9, borderRadius: 12, backgroundColor: theme.sage },
-  noticeText: { fontSize: 13, lineHeight: 18, color: theme.surface, textAlign: 'center' },
+  screen: { flex: 1, backgroundColor: theme.canvas },
+  loading: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: theme.canvas },
+  notice: { alignSelf: 'center', maxWidth: 520, marginHorizontal: 16, marginBottom: 8, paddingHorizontal: 14, paddingVertical: 9, borderRadius: 12,
+    borderWidth: 1, borderColor: theme.line, backgroundColor: theme.accentSoft },
+  noticeText: { fontSize: 13, lineHeight: 18, color: theme.accent, textAlign: 'center' },
 });

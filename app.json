@@ -10,8 +10,8 @@
       "web"
     ],
     "icon": "./assets/icon.png",
-    "userInterfaceStyle": "light",
-    "backgroundColor": "#f4f0e8",
+    "userInterfaceStyle": "dark",
+    "backgroundColor": "#141218",
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.rogersau.littlelight"
@@ -22,6 +22,7 @@
     "web": {
       "bundler": "metro",
       "output": "single",
+      "themeColor": "#141218",
       "favicon": "./assets/icon.png"
     },
     "plugins": [

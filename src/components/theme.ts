@@ -3,19 +3,31 @@ import type { Palette } from '../domain/colors.ts';
 import type { Stage } from '../domain/schedule.ts';
 
 export const theme = {
-  paper: '#f4f0e8', surface: '#fcfaf5', ink: '#3e4039', muted: '#66685d',
-  sage: '#526454', softSage: '#e7ebe0', line: '#deddd2', gold: '#927547',
+  canvas: '#141218',
+  surface: '#1e1b24',
+  surfaceElevated: '#272330',
+  surfacePressed: '#322d3d',
+  ink: '#f7efe6',
+  muted: '#b4a99e',
+  subtle: '#867c74',
+  line: '#332e3d',
+  accent: '#f0c47a',
+  accentInk: '#1b1610',
+  accentSoft: '#2e261d',
+  danger: '#e57368',
+  dangerBg: '#361f22',
+  dangerBorder: '#5e3136',
   serif: Platform.OS === 'ios' ? 'Georgia' : 'serif',
 };
 
 export const STAGE_COPY = {
-  sleep: { label: 'RED MOON', title: 'Time to sleep', description: 'Snuggle up in bed.', next: 'Sleep time' },
-  quiet: { label: 'YELLOW SUNRISE', title: 'Quiet time', description: 'You can play quietly in your room.', next: 'Quiet morning' },
-  rise: { label: 'GREEN SUN', title: 'Time to get up', description: 'You can come out and say good morning.', next: 'Time to get up' },
-} as const satisfies Record<Stage, { label: string; title: string; description: string; next: string }>;
+  sleep: { label: 'RED · SLEEP', short: 'Sleep', toddlerCue: 'Stay in bed', title: 'Time to sleep', description: 'Snuggle up and rest.', next: 'Sleep time' },
+  quiet: { label: 'YELLOW · QUIET', short: 'Quiet time', toddlerCue: 'Play quietly', title: 'Quiet time', description: 'You can play quietly in your room.', next: 'Quiet time' },
+  rise: { label: 'GREEN · GET UP', short: 'Wake up', toddlerCue: 'Okay to get up', title: 'Time to get up!', description: 'Good morning! You can come out now.', next: 'Time to get up' },
+} as const satisfies Record<Stage, { label: string; short: string; toddlerCue: string; title: string; description: string; next: string }>;
 
 export const CUES = {
-  sleep: { color: 'Red', title: 'Sleep', swatch: '--red', chip: '#f0ded5' },
-  quiet: { color: 'Yellow', title: 'Stay cozy', swatch: '--yellow', chip: '#f6edcf' },
-  rise: { color: 'Green', title: 'Get up', swatch: '--green', chip: '#e6ecdc' },
+  sleep: { color: 'Red', title: 'Sleep', swatch: '--red', chip: '#321c1f' },
+  quiet: { color: 'Yellow', title: 'Stay cozy', swatch: '--yellow', chip: '#332b18' },
+  rise: { color: 'Green', title: 'Get up', swatch: '--green', chip: '#1b2e22' },
 } as const satisfies Record<Stage, { color: string; title: string; swatch: keyof Palette; chip: string }>;
