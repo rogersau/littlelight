@@ -1,0 +1,41 @@
+{
+  "expo": {
+    "name": "Little Light",
+    "slug": "little-light",
+    "version": "1.0.0",
+    "orientation": "default",
+    "platforms": [
+      "ios",
+      "android",
+      "web"
+    ],
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "backgroundColor": "#f4f0e8",
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.rogersau.littlelight"
+    },
+    "android": {
+      "package": "com.rogersau.littlelight"
+    },
+    "web": {
+      "bundler": "metro",
+      "output": "single",
+      "favicon": "./assets/icon.png"
+    },
+    "plugins": [
+      [
+        "expo-audio",
+        {
+          "microphonePermission": false,
+          "recordAudioAndroid": false,
+          "enableBackgroundPlayback": false
+        }
+      ],
+      "@react-native-community/datetimepicker",
+      "expo-image",
+      "expo-asset"
+    ]
+  }
+}

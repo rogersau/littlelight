@@ -1,0 +1,120 @@
+name: Build Little Light
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - run: npm run typecheck
+      - run: npx expo install --check
+
+  web:
+    needs: check
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      pages: read
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - uses: actions/configure-pages@v6
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+        id: pages
+      - run: npm run build:web
+        env:
+          EXPO_WEB_BASE_PATH: ${{ steps.pages.outputs.base_path || format('/{0}', github.event.repository.name) }}
+      - uses: actions/upload-pages-artifact@v5
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+        with:
+          path: dist
+
+  deploy:
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    needs: web
+    runs-on: ubuntu-24.04
+    permissions:
+      pages: write
+      id-token: write
+    concurrency:
+      group: github-pages
+      cancel-in-progress: false
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v5
+
+  android:
+    needs: check
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: 17
+      - run: npm ci
+      - run: npx expo prebuild --platform android --no-install
+      - name: Assemble standalone APK
+        working-directory: android
+        run: ./gradlew :app:assembleRelease --no-daemon
+      - uses: actions/upload-artifact@v7
+        with:
+          name: little-light-android-apk
+          path: android/app/build/outputs/apk/release/app-release.apk
+          if-no-files-found: error
+
+  ios:
+    needs: check
+    runs-on: macos-26
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npx expo prebuild --platform ios --no-install
+      - name: Install CocoaPods dependencies
+        working-directory: ios
+        run: pod install
+      - name: Build iOS Simulator app
+        run: |
+          xcodebuild -workspace ios/LittleLight.xcworkspace -scheme LittleLight \
+            -configuration Release -destination 'generic/platform=iOS Simulator' \
+            -derivedDataPath "$RUNNER_TEMP/little-light-build" \
+            ARCHS=arm64 CODE_SIGNING_ALLOWED=NO -quiet build
+          ditto -c -k --keepParent \
+            "$RUNNER_TEMP/little-light-build/Build/Products/Release-iphonesimulator/LittleLight.app" \
+            "$RUNNER_TEMP/LittleLight-iOS-Simulator.zip"
+      - uses: actions/upload-artifact@v7
+        with:
+          name: little-light-ios-simulator
+          path: ${{ runner.temp }}/LittleLight-iOS-Simulator.zip
+          if-no-files-found: error
